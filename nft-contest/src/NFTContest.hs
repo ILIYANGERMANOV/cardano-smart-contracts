@@ -16,7 +16,8 @@
 {-# LANGUAGE TypeOperators              #-}
 
 module NFTContest (
-    hello
+    hello,
+    GameDatum
 ) where
 
 import           Control.Monad        hiding (fmap)
@@ -52,6 +53,37 @@ import           Prelude                      (Semigroup (..), Show (..), uncurr
 
 hello:: P.String
 hello = "Hello from NFTContest.hs"
+
+data ContractParams = ContractParams {
+    cpGameMaker         :: !PubKeyHash,
+    cpEnterFee          :: !Integer,
+    cpMaxParticipants   :: !Integer,
+    cpTT                :: !(Maybe ThreadToken)
+} deriving (Show, Generic, FromJSON, ToJSON, P.Eq)
+
+data NFTState = NFTState {
+    owner   :: !PubKeyHash,
+    votes   :: ![PubKeyHash]
+} deriving (Show)
+
+data GameDatum = 
+    GameDatum {
+        gNfts           :: !(Map AssetClass NFTState),
+        gEnterDeadline  :: !POSIXTime,
+        gVoteDeadline   :: !POSIXTime
+    } | Finished 
+    deriving (Show)
+
+data GameRedeemer = 
+      Start {
+          enterDeadline :: POSIXTime,
+          voiteDeadline :: POSIXTime
+      }
+    | Enter PubKeyHash
+    | Vote PubKeyHash AssetClass
+    | Exit PubKeyHash AssetClass
+    | Finish
+    deriving (Show, P.Eq)
 
 -- TODO Define validator
 
