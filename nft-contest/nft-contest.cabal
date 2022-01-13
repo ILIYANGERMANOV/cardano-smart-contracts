@@ -11,6 +11,7 @@ License-files:       LICENSE
 library
   hs-source-dirs:      src
   exposed-modules:     Main
+                     , NFTContest
   build-depends:       aeson
                      , base ^>=4.14.1.0
                      , containers
@@ -19,6 +20,7 @@ library
                      , playground-common
                      , plutus-contract
                      , plutus-ledger
+                     , plutus-ledger-constraints
                      , plutus-ledger-api
                      , plutus-tx-plugin
                      , plutus-tx
