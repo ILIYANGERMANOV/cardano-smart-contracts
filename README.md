@@ -1,6 +1,6 @@
 # Ivy token (IVY)
 IVY is a **"fair" token** on the Cardano network to support **innovation and development**. 
-Ivy token is also the official currency of Ivy DAO and gives premium access to Ivy's eco-system.
+Ivy token is also the official currency of Ivy DAO and provides governance rights, special access and power in the Ivy eco-system.
 
 The purpose of IVY is to **connect inventors, builders, and people** fighting for a brighter tomorrow...
 So they can freely define and build upon ideas whenever, wherever, and however they want.
