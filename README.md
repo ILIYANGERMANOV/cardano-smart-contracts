@@ -33,6 +33,9 @@ Together and with the right system people can both be **happy & fulfilled at wor
 ### Ivy IDEA hub
 A place to share, discuss and bring ideas to reality.
 
+### Ivy Open-source Alliance
+Get support and support other open-source projects.
+
 ### Ivy Design system
 Modern, efficient, elegant.
 
@@ -44,6 +47,9 @@ Decentralized and fair app store.
 
 ### Ivy Auth
 Authenticate in the IVY eco-system similar to "Login with Google" or "Continue with Facebook".
+
+### Ivy Knowledge Center
+Learn, share, and earn by propagating knowledge. WIP
 
 ### Ivy Wallet (pilot project)
 
