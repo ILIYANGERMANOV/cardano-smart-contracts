@@ -17,16 +17,34 @@ completing tasks that we'll help the project and earn IVY.
 
 Together and with the right system people can both be **happy & fulfilled at work** while building great stuff that will **change the world!** 
 
-## How it works?
-### Proposals
+## How it works? (WIP)
+### Proposal (Smart Contract)
+**Proposal**
+- approveVotes _(approve for building)_
+- approveDeadline
+- deliveryVotes _(accept as delivered)_
+- deliveryVotes
+- price :: Ivy
 
-### Minting
+### Minting & Burning (Smart Contract)
+**Datum**
+- csIvy :: Ivy
+- governance :: Protocol
 
-### Burning
+**Redeemer**
+- Mint
+  * proposalAddress
+- GovernanceUpdate
+  * governance structure
+
+### Ivy DEX (Trade)
+
+### Governance Update (Smart Contract)
+Protocol
+- max mint IVY per proposal
+- min votes to accept proposal
 
 ### Supply
-
-## Ivy DEX
 
 ## Utility
 
