@@ -1,4 +1,4 @@
-# Ivy token (IVY)
+# Ivy token (IVY): Rebuilding the world and "meaning"
 IVY is a **"fair" token** on the Cardano network to support **innovation and development**. 
 Ivy token is also the official currency of Ivy DAO and provides governance rights and special access in the Ivy eco-system.
 
