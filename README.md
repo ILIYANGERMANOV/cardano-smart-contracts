@@ -12,12 +12,19 @@ without sacrificing freedom and innovation to meet investors' financial goals.
 - B) Builders (developers, designers, experts) can **work and earn freely** from one or multiple projects that they find interesting w/o
 9-5 contracts, NDAs and things that limit their freedom while practicing their craft.
 
-- C) People (investors, idealists) can **support meaningful ideas and projects** by providing capital, suggesting ideas/improvements or 
+- C) People (investors, idealists) can **support meaningful ideas and get ROI** by providing capital, suggesting improvements or 
 completing tasks that we'll help the project and earn IVY.
 
 Together and with the right system people can both be **happy & fulfilled at work** while building great stuff that will **change the world!** 
 
-## How it works? -Proposals (Minting /Burning)
+## How it works?
+### Proposals
+
+### Minting
+
+### Burning
+
+### Supply
 
 ## Ivy DEX
 
