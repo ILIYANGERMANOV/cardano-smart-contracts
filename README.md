@@ -30,11 +30,14 @@ Together and with the right system people can both be **happy & fulfilled at wor
 
 ## Utility
 
-### Ivy Pay
-Purchase software or subscriptions with IVY. WIP...
+### Ivy IDEA hub
+A place to share, discuss and bring ideas to reality.
 
 ### Ivy Design system
 Modern, efficient, elegant.
+
+### Ivy Pay
+Purchase software or subscriptions with IVY. WIP...
 
 ### Ivy Store
 Decentralized and fair app store.
