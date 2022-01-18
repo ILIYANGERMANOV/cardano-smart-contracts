@@ -166,18 +166,14 @@ type IvyTokenSchema = Endpoint "mint" ()
 
 mintIvy :: () -> Contract w IvyTokenSchema Text ()
 mintIvy _ = do
-    pkh <- Plutus.Contract.Request.ownPaymentPubKeyHash
-    utxos <- utxosAt (pubKeyHashAddress pkh Nothing)
-    case Map.keys utxos of
-        []       -> Contract.logError @String "no utxo found"
-        oref : _ -> do
-            let val     = Value.singleton curSymbol ivyToken 1
-                lookups = Constraints.unspentOutputs utxos <>
-                          Constraints.mintingPolicy ivyMintingPolicy
-                tx      = Constraints.mustMintValue val <> Constraints.mustSpendPubKeyOutput oref
-            ledgerTx <- submitTxConstraintsWith @Void lookups tx
-            void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
-            Contract.logInfo @String $ printf "forged %s" (show val)
+    let val = Value.singleton curSymbol ivyToken 1
+        lookups = Constraints.typedValidatorLookups ivyTypedValidator
+        tx      = Constraints.mustMintValue val <>
+                  Constraints.mustIncludeDatum (Datum $ PlutusTx.toBuiltinData Genesis)
+    ledgerTx <- submitTxConstraintsWith lookups tx
+    void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+    Contract.logInfo @String $ printf "forged %s" (show val)
+
 
 endpoints :: Contract () IvyTokenSchema Text ()
 endpoints = forever
@@ -187,10 +183,15 @@ endpoints = forever
     mint' = endpoint @"mint" mintIvy
     
 
+-- Playground
 mkSchemaDefinitions ''IvyTokenSchema
 
-mkKnownCurrencies []
+myToken :: KnownCurrency
+myToken = KnownCurrency (ValidatorHash "f") "Token" (TokenName "T" :| [])
 
+mkKnownCurrencies ['myToken]
+
+-- Testing
 test :: IO ()
 test = runEmulatorTraceIO $ do
     h1 <- activateContractWallet (fromWalletNumber $ WalletNumber 1) endpoints
