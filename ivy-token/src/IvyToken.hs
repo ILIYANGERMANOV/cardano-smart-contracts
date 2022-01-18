@@ -38,9 +38,8 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 
-module IvyToken (
-    hello,
-    test
+module IvyToken(
+    defGovernance
 ) where
 
 import           Control.Monad        hiding (fmap)
@@ -75,11 +74,55 @@ import           Prelude                      (Semigroup (..), Show (..), String
 import           Plutus.Trace.Emulator  as Emulator
 import           Plutus.Contract.Request
 import           Wallet.Emulator.Types
+import           PlutusTx.Enum
+import           Data.Map             as Map
 
-hello:: String
-hello = "Hello from IvyToken.hs"
+-- Data
+data Proposal = 
+    Proposal {
+        id        :: Integer,
+        proposers :: [(PubKeyHash, Integer)],
+        tag       :: String,
+        url       :: String,
+        price     :: Integer
+    } | 
+    GovernanceUpdate {
+        id              :: Integer,
+        newGovernance   :: Governance
+    } 
+    deriving (Show)
+
+data VoteType =  Approve | Reject 
+    deriving (Show, Enum)
+
+data Vote = Vote {
+    voter :: PubKeyHash,
+    types  :: VoteType
+} deriving (Show)
+
+data Governance = Governance {
+    pVotesThreshold     :: Integer,
+    gVotesThreshold     :: Integer,
+    maxProposalPrice    :: Integer,
+    votersRewardPercent :: Integer
+} deriving (Show)
+
+data IvyDatum = Genesis | IvyDatum {
+    proposals :: [Proposal],
+    votes     :: Map Integer Vote
+} deriving (Show)
+
 
 ivyToken = "IVY"
+
+-- Initial
+defGovernance :: Governance
+defGovernance = Governance {
+    pVotesThreshold     = 100,
+    gVotesThreshold     = 1000,
+    maxProposalPrice    = 500,
+    votersRewardPercent = 1
+}
 
 -- On-chain
 {-# INLINABLE mkPolicy #-}
@@ -99,7 +142,6 @@ type IvyTokenSchema = Endpoint "mint" ()
 
 mintIvy :: () -> Contract w IvyTokenSchema Text ()
 mintIvy _ = do
-    -- pk    <- Contract.ownPubKey
     pkh <- Plutus.Contract.Request.ownPaymentPubKeyHash
     utxos <- utxosAt (pubKeyHashAddress pkh Nothing)
     case Map.keys utxos of
