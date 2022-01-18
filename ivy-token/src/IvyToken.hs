@@ -1,56 +1,19 @@
 {-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DeriveAnyClass             #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE DerivingStrategies         #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE NoImplicitPrelude          #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE DeriveAnyClass      #-}
 {-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE NoImplicitPrelude   #-}
-{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell     #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude     #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DeriveAnyClass             #-}
-{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE NoImplicitPrelude          #-}
-{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
-
 
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
@@ -81,14 +44,10 @@ import           Playground.Types     (KnownCurrency (..))
 import qualified PlutusTx
 import           Schema               (ToSchema)
 import           Text.Printf          (printf)
-import           Control.Monad                hiding (fmap)
 import           Data.Monoid                  (Last (..))
 import           Plutus.Contract              as Contract
 import           PlutusTx.Prelude             hiding (Semigroup(..), check, unless)
 import           Ledger                       hiding (singleton)
-import           Ledger.Ada                   as Ada
-import           Ledger.Constraints           as Constraints
-import qualified Ledger.Typed.Scripts         as Scripts
 import           Ledger.Value
 import           Wallet.Emulator.Wallet 
 import           Prelude                      (Semigroup (..), Show (..), String)
@@ -98,6 +57,7 @@ import           Wallet.Emulator.Types
 import           PlutusTx.Enum
 import           Data.Map             as Map
 import           Ledger.Constraints
+import           Data.Void           (Void)
 
 
 -- Data
@@ -170,28 +130,21 @@ defGovernance = Governance {
 
 -- On-chain
 {-# INLINABLE mkValidator #-}
-mkValidator :: IvyDatum -> IvyReedemer -> ScriptContext -> Bool
+mkValidator :: IvyDatum -> () -> ScriptContext -> Bool
 mkValidator  _ _ _ = True
 
 
 data IvyTokenContract
 instance Scripts.ValidatorTypes IvyTokenContract where
     type instance DatumType IvyTokenContract = IvyDatum
-    type instance RedeemerType IvyTokenContract = IvyReedemer
+    type instance RedeemerType IvyTokenContract = ()
 
 ivyTypedValidator :: Scripts.TypedValidator IvyTokenContract
 ivyTypedValidator = Scripts.mkTypedValidator @IvyTokenContract
         $$(PlutusTx.compile [|| mkValidator ||])
         $$(PlutusTx.compile [|| wrap ||])
     where
-        wrap = Scripts.wrapValidator @IvyDatum @IvyReedemer
-
--- ivyPolicy :: Scripts.MintingPolicy
--- ivyPolicy = mkMintingPolicyScript $
---         $$(PlutusTx.compile [|| Scripts.wrapMintingPolicy mkValidator ||])
---         $$(PlutusTx.compile [|| wrap ||])
---     where
---         wrap = Scripts.wrapValidator @IvyDatum @IvyReedemer
+        wrap = Scripts.wrapValidator @IvyDatum @()
 
 validator :: Validator
 validator = Scripts.validatorScript ivyTypedValidator
@@ -202,8 +155,11 @@ valHash = Scripts.validatorHash ivyTypedValidator
 scrAddress :: Ledger.Address
 scrAddress = scriptAddress validator
 
+ivyMintingPolicy :: Scripts.MintingPolicy
+ivyMintingPolicy = Scripts.forwardingMintingPolicy ivyTypedValidator
+
 curSymbol :: CurrencySymbol
-curSymbol = scriptCurrencySymbol $ (Scripts.forwardingMintingPolicy ivyTypedValidator)
+curSymbol = scriptCurrencySymbol $ ivyMintingPolicy
 
 -- Off-chain
 type IvyTokenSchema = Endpoint "mint" ()
@@ -216,9 +172,10 @@ mintIvy _ = do
         []       -> Contract.logError @String "no utxo found"
         oref : _ -> do
             let val     = Value.singleton curSymbol ivyToken 1
-                lookups = Constraints.typedValidatorLookups ivyTypedValidator <> Constraints.unspentOutputs utxos
+                lookups = Constraints.unspentOutputs utxos <>
+                          Constraints.mintingPolicy ivyMintingPolicy
                 tx      = Constraints.mustMintValue val <> Constraints.mustSpendPubKeyOutput oref
-            ledgerTx <- submitTxConstraintsWith lookups tx
+            ledgerTx <- submitTxConstraintsWith @Void lookups tx
             void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
             Contract.logInfo @String $ printf "forged %s" (show val)
 
@@ -239,5 +196,5 @@ test = runEmulatorTraceIO $ do
     h1 <- activateContractWallet (fromWalletNumber $ WalletNumber 1) endpoints
     callEndpoint @"mint" h1 ()
     void $ Emulator.waitNSlots 1
-    callEndpoint @"mint" h1 ()
-    void $ Emulator.waitNSlots 1
+    -- callEndpoint @"mint" h1 ()
+    -- void $ Emulator.waitNSlots 1
