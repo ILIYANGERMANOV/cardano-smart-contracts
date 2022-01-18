@@ -77,6 +77,7 @@ import           Wallet.Emulator.Types
 import           PlutusTx.Enum
 import           Data.Map             as Map
 
+
 -- Data
 data Proposal = 
     Proposal {
