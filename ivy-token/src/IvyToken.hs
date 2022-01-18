@@ -14,9 +14,33 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE NoImplicitPrelude   #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude     #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 
 module IvyToken (
     hello,
+    test
 ) where
 
 import           Control.Monad        hiding (fmap)
@@ -34,8 +58,6 @@ import           Playground.Contract  (IO, ensureKnownCurrencies, printSchemas, 
 import           Playground.TH        (mkKnownCurrencies, mkSchemaDefinitions)
 import           Playground.Types     (KnownCurrency (..))
 import qualified PlutusTx
-import           PlutusTx.Prelude     hiding (unless)
-import qualified Prelude              as P
 import           Schema               (ToSchema)
 import           Text.Printf          (printf)
 import           Control.Monad                hiding (fmap)
@@ -48,11 +70,64 @@ import           Ledger.Ada                   as Ada
 import           Ledger.Constraints           as Constraints
 import qualified Ledger.Typed.Scripts         as Scripts
 import           Ledger.Value
-import           Prelude                      (Semigroup (..), Show (..), uncurry)
+import           Wallet.Emulator.Wallet 
+import           Prelude                      (Semigroup (..), Show (..), String)
+import           Plutus.Trace.Emulator  as Emulator
+import           Plutus.Contract.Request
+import           Wallet.Emulator.Types
 
-hello:: P.String
+hello:: String
 hello = "Hello from IvyToken.hs"
 
--- TODO Define validator
+ivyToken = "IVY"
 
--- Define Contracts
+-- On-chain
+{-# INLINABLE mkPolicy #-}
+mkPolicy :: () -> ScriptContext -> Bool
+mkPolicy  _ _ = True
+
+policy :: Scripts.MintingPolicy
+policy = mkMintingPolicyScript $
+    $$(PlutusTx.compile [|| Scripts.wrapMintingPolicy $ mkPolicy||])
+
+curSymbol :: CurrencySymbol
+curSymbol = scriptCurrencySymbol $ policy
+
+
+-- Off-chain
+type IvyTokenSchema = Endpoint "mint" ()
+
+mintIvy :: () -> Contract w IvyTokenSchema Text ()
+mintIvy _ = do
+    -- pk    <- Contract.ownPubKey
+    pkh <- Plutus.Contract.Request.ownPaymentPubKeyHash
+    utxos <- utxosAt (pubKeyHashAddress pkh Nothing)
+    case Map.keys utxos of
+        []       -> Contract.logError @String "no utxo found"
+        oref : _ -> do
+            let val     = Value.singleton curSymbol ivyToken 1
+                lookups = Constraints.mintingPolicy policy <> Constraints.unspentOutputs utxos
+                tx      = Constraints.mustMintValue val <> Constraints.mustSpendPubKeyOutput oref
+            ledgerTx <- submitTxConstraintsWith @Void lookups tx
+            void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+            Contract.logInfo @String $ printf "forged %s" (show val)
+
+endpoints :: Contract () IvyTokenSchema Text ()
+endpoints = forever
+                $ awaitPromise
+                $ mint'
+  where
+    mint' = endpoint @"mint" mintIvy
+    
+
+mkSchemaDefinitions ''IvyTokenSchema
+
+mkKnownCurrencies []
+
+test :: IO ()
+test = runEmulatorTraceIO $ do
+    h1 <- activateContractWallet (fromWalletNumber $ WalletNumber 1) endpoints
+    callEndpoint @"mint" h1 ()
+    void $ Emulator.waitNSlots 1
+    callEndpoint @"mint" h1 ()
+    void $ Emulator.waitNSlots 1

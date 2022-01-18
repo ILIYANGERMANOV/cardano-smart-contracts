@@ -70,3 +70,65 @@ sellAda (p, w) a
 
 priceIvy :: Pool -> Double
 priceIvy p = ada p / ivy p
+
+{- 
+    IVY token
+    V token:
+        - reward for voting
+        - used for Governance voting
+    ADA
+
+    ${pId}ThreadToken?
+    GovernanceThreadToken
+
+    -----------------------
+
+    pId ProposeContract( MINTS V
+        Datum {
+            Map PubKeyHash IVY
+        }
+
+        Redeemer {
+            Vote IVY |
+
+        }   
+    )
+
+    MintContract(
+        Datum {
+            supply :: Ivy,
+
+        }
+
+        Redeemer {
+
+        }
+    )
+
+    GovernanceContract(
+        data Governance {
+            minProposalVotes :: Ivy,
+            maxProposalReward :: Ivy,
+            governanceProposalFee :: Ivy
+        }
+
+        Datum {
+            currentGovernance :: Governance,
+            updateProposal :: (Governance, [V], [V], deadLine)
+        }
+
+        Redeemer {
+            Use |
+            Propose V newG |
+            Vote V V
+        }
+    )
+
+    IvyMarketContract(
+
+    )
+
+    VMarketContract(
+
+    )
+-}
