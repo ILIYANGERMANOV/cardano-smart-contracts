@@ -59,7 +59,9 @@ module IvyToken(
     defGovernance,
     Proposal (..),
     Governance (..),
-    VoteType (..)
+    VoteType (..),
+    test,
+    curSymbol
 ) where
 
 import           Control.Monad        hiding (fmap)
@@ -191,9 +193,6 @@ ivyTypedValidator = Scripts.mkTypedValidator @IvyTokenContract
 --     where
 --         wrap = Scripts.wrapValidator @IvyDatum @IvyReedemer
 
--- curSymbol :: CurrencySymbol
--- curSymbol = scriptCurrencySymbol $ ivyPolicy
-
 validator :: Validator
 validator = Scripts.validatorScript ivyTypedValidator
 
@@ -202,6 +201,9 @@ valHash = Scripts.validatorHash ivyTypedValidator
 
 scrAddress :: Ledger.Address
 scrAddress = scriptAddress validator
+
+curSymbol :: CurrencySymbol
+curSymbol = scriptCurrencySymbol $ (Scripts.forwardingMintingPolicy ivyTypedValidator)
 
 -- Off-chain
 type IvyTokenSchema = Endpoint "mint" ()
@@ -213,8 +215,7 @@ mintIvy _ = do
     case Map.keys utxos of
         []       -> Contract.logError @String "no utxo found"
         oref : _ -> do
-            -- TODO: Fix Value.singleton "aa" with the actual script adress
-            let val     = Value.singleton "aa" ivyToken 1
+            let val     = Value.singleton curSymbol ivyToken 1
                 lookups = Constraints.typedValidatorLookups ivyTypedValidator <> Constraints.unspentOutputs utxos
                 tx      = Constraints.mustMintValue val <> Constraints.mustSpendPubKeyOutput oref
             ledgerTx <- submitTxConstraintsWith lookups tx
