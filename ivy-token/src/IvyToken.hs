@@ -111,16 +111,16 @@ PlutusTx.makeLift ''Governance
 
 data Proposal = 
     Proposal {
-        id        :: Integer,
-        proposers :: [(PubKeyHash, Integer)],
-        tag       :: String,
-        url       :: String,
-        price     :: Integer
+        id        :: !Integer,
+        proposers :: ![(PubKeyHash, Integer)],
+        tag       :: !BuiltinByteString,
+        url       :: !BuiltinByteString,
+        price     :: !Integer
     } 
     | 
     GovernanceUpdate {
-        id              :: Integer,
-        newGovernance   :: Governance
+        id              :: !Integer,
+        newGovernance   :: !Governance
     } 
     deriving (Show, Generic, FromJSON, ToJSON)
 
@@ -134,23 +134,23 @@ PlutusTx.unstableMakeIsData ''VoteType
 PlutusTx.makeLift ''VoteType
 
 data Vote = Vote {
-    voter :: PubKeyHash,
-    types  :: VoteType
-} deriving (Show, Generic, FromJSON, ToJSON, ToSchema, Enum)
+    voter   :: !PubKeyHash,
+    types   :: !VoteType
+} deriving (Show, Generic, FromJSON, ToJSON, ToSchema)
 
 PlutusTx.unstableMakeIsData ''Vote
 PlutusTx.makeLift ''Vote
 
 data IvyDatum = Genesis | IvyDatum {
-    proposals :: [Proposal],
-    votes     :: Map Integer Vote
-} deriving (Show, Generic, FromJSON, ToJSON, Enum)
+    proposals :: ![Proposal],
+    votes     :: ![(Integer, Vote)]
+} deriving (Show, Generic, FromJSON, ToJSON)
 
 PlutusTx.unstableMakeIsData ''IvyDatum
 PlutusTx.makeLift ''IvyDatum
 
 data IvyReedemer = RedeemWIP
-    deriving (Show, Generic, FromJSON, ToJSON, Enum)
+    deriving (Show, Generic, FromJSON, ToJSON)
 
 PlutusTx.unstableMakeIsData ''IvyReedemer
 PlutusTx.makeLift ''IvyReedemer
