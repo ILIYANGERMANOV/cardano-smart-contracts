@@ -56,6 +56,7 @@ import           Ledger.Constraints
 import           Data.Void           (Void)
 
 
+
 {-# INLINABLE ivyToken #-}
 ivyToken = "IVY_T1"
 
@@ -63,9 +64,17 @@ ivyToken = "IVY_T1"
 initialAmount = 1_000_000
 
 -- On-chain
+data MintingIvyParam = MintingIvyParam { 
+    orfer :: !TxOutRef
+} deriving Show
+
+PlutusTx.unstableMakeIsData ''MintingIvyParam
+PlutusTx.makeLift ''MintingIvyParam
+
+
 {-# INLINABLE mkPolicy #-}
-mkPolicy :: TxOutRef -> () -> ScriptContext -> Bool
-mkPolicy oref () ctx = traceIfFalse "UTxO not consumed"   hasUTxO           &&
+mkPolicy :: MintingIvyParam -> () -> ScriptContext -> Bool
+mkPolicy (MintingIvyParam oref) () ctx = traceIfFalse "UTxO not consumed"   hasUTxO           &&
                           traceIfFalse "wrong amount minted" checkMintedAmount
   where
     info :: TxInfo
@@ -76,16 +85,16 @@ mkPolicy oref () ctx = traceIfFalse "UTxO not consumed"   hasUTxO           &&
 
     checkMintedAmount :: Bool
     checkMintedAmount = case flattenValue (txInfoMint info) of
-        [(cs, tn', amt)] -> cs  == ownCurrencySymbol ctx && tn' == "ivyToken" && amt == initialAmount
+        [(cs, tn', amt)] -> cs  == ownCurrencySymbol ctx && tn' == ivyToken && amt == initialAmount
         _                -> False
 
-policy :: TxOutRef -> Scripts.MintingPolicy
+policy :: MintingIvyParam -> Scripts.MintingPolicy
 policy oref = mkMintingPolicyScript $
     $$(PlutusTx.compile [|| Scripts.wrapMintingPolicy . mkPolicy ||])
     `PlutusTx.applyCode`
     PlutusTx.liftCode oref
 
-curSymbol :: TxOutRef -> CurrencySymbol
+curSymbol :: MintingIvyParam -> CurrencySymbol
 curSymbol = scriptCurrencySymbol . policy
 
 
@@ -103,8 +112,9 @@ mintIvy _ = do
     case Map.keys utxos of
         [] -> logError @String "no utxo found"
         oref : _ -> do
-            let val     = Value.singleton (curSymbol oref) ivyToken 1_000_000
-                lookups = Constraints.mintingPolicy $ policy oref
+            let param = MintingIvyParam oref
+                val     = Value.singleton (curSymbol param) ivyToken initialAmount
+                lookups = Constraints.mintingPolicy $ policy param
                 tx      = Constraints.mustMintValue val <> Constraints.mustSpendPubKeyOutput oref
             ledgerTx <- submitTxConstraintsWith @Void lookups tx
             void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
