@@ -14,6 +14,7 @@
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE NumericUnderscores #-}
 
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
@@ -167,10 +168,9 @@ type IvyTokenSchema = Endpoint "mint" ()
 mintIvy :: () -> Contract w IvyTokenSchema Text ()
 mintIvy _ = do
     let val = Value.singleton curSymbol ivyToken 1
-        lookups = Constraints.typedValidatorLookups ivyTypedValidator
-        tx      = Constraints.mustMintValue val <>
-                  Constraints.mustIncludeDatum (Datum $ PlutusTx.toBuiltinData Genesis)
-    ledgerTx <- submitTxConstraintsWith lookups tx
+        lookups = Constraints.mintingPolicy ivyMintingPolicy
+        tx      = Constraints.mustMintValue val
+    ledgerTx <- submitTxConstraintsWith @Void lookups tx
     void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
     Contract.logInfo @String $ printf "forged %s" (show val)
 

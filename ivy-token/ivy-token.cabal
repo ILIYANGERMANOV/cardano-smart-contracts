@@ -12,6 +12,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Main
                      , IvyToken
+                     , MintIvy
   build-depends:       aeson
                      , base ^>=4.14.1.0
                      , containers
