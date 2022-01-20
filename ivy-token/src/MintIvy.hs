@@ -65,7 +65,7 @@ initialAmount = 1_000_000
 
 -- On-chain
 data MintingIvyParam = MintingIvyParam { 
-    orfer :: !TxOutRef
+    oref :: !TxOutRef
 } deriving Show
 
 PlutusTx.unstableMakeIsData ''MintingIvyParam
@@ -89,10 +89,10 @@ mkPolicy (MintingIvyParam oref) () ctx = traceIfFalse "UTxO not consumed"   hasU
         _                -> False
 
 policy :: MintingIvyParam -> Scripts.MintingPolicy
-policy oref = mkMintingPolicyScript $
+policy p = mkMintingPolicyScript $
     $$(PlutusTx.compile [|| Scripts.wrapMintingPolicy . mkPolicy ||])
     `PlutusTx.applyCode`
-    PlutusTx.liftCode oref
+    PlutusTx.liftCode p
 
 curSymbol :: MintingIvyParam -> CurrencySymbol
 curSymbol = scriptCurrencySymbol . policy
