@@ -56,19 +56,37 @@ import           Ledger.Constraints
 import           Data.Void           (Void)
 
 
+{-# INLINABLE ivyToken #-}
 ivyToken = "IVY_T1"
+
+{-# INLINABLE initialAmount #-}
+initialAmount = 1_000_000
 
 -- On-chain
 {-# INLINABLE mkPolicy #-}
-mkPolicy :: () -> ScriptContext -> Bool
-mkPolicy () ctx = True
+mkPolicy :: TxOutRef -> () -> ScriptContext -> Bool
+mkPolicy oref () ctx = traceIfFalse "UTxO not consumed"   hasUTxO           &&
+                          traceIfFalse "wrong amount minted" checkMintedAmount
+  where
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
 
-policy :: Scripts.MintingPolicy
-policy = mkMintingPolicyScript $
-    $$(PlutusTx.compile [|| Scripts.wrapMintingPolicy mkPolicy ||])
+    hasUTxO :: Bool
+    hasUTxO = any (\i -> txInInfoOutRef i == oref) $ txInfoInputs info
 
-curSymbol ::  CurrencySymbol
-curSymbol = scriptCurrencySymbol policy
+    checkMintedAmount :: Bool
+    checkMintedAmount = case flattenValue (txInfoMint info) of
+        [(cs, tn', amt)] -> cs  == ownCurrencySymbol ctx && tn' == "ivyToken" && amt == initialAmount
+        _                -> False
+
+policy :: TxOutRef -> Scripts.MintingPolicy
+policy oref = mkMintingPolicyScript $
+    $$(PlutusTx.compile [|| Scripts.wrapMintingPolicy . mkPolicy ||])
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode oref
+
+curSymbol :: TxOutRef -> CurrencySymbol
+curSymbol = scriptCurrencySymbol . policy
 
 
 -- Off-chain
@@ -80,12 +98,17 @@ type MintIvySchema = Endpoint "mint" ()
 
 mintIvy :: () -> Contract w MintIvySchema Text ()
 mintIvy _ = do
-    let val     = Value.singleton curSymbol ivyToken 1_000_000
-        lookups = Constraints.mintingPolicy $ policy
-        tx      = Constraints.mustMintValue val
-    ledgerTx <- submitTxConstraintsWith @Void lookups tx
-    void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
-    Contract.logInfo @String $ printf "forged %s" (show val)
+    pkh <- Contract.ownPaymentPubKeyHash
+    utxos <- utxosAt $ pubKeyHashAddress pkh Nothing
+    case Map.keys utxos of
+        [] -> logError @String "no utxo found"
+        oref : _ -> do
+            let val     = Value.singleton (curSymbol oref) ivyToken 1_000_000
+                lookups = Constraints.mintingPolicy $ policy oref
+                tx      = Constraints.mustMintValue val <> Constraints.mustSpendPubKeyOutput oref
+            ledgerTx <- submitTxConstraintsWith @Void lookups tx
+            void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+            Contract.logInfo @String $ printf "forged %s" (show val)
 
 endpoints :: Contract () MintIvySchema Text ()
 endpoints = forever
@@ -95,7 +118,7 @@ endpoints = forever
         mint' = endpoint @"mint" mintIvy
     
 
--- Testing
+-- -- Testing
 test :: IO ()
 test = runEmulatorTraceIO $ do
     h1 <- activateContractWallet (fromWalletNumber $ WalletNumber 1) endpoints
